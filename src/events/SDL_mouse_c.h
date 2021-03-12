@@ -143,6 +143,8 @@ extern int SDL_SendMouseButtonClicks(SDL_Window * window, SDL_MouseID mouseID, U
 /* Send a mouse wheel event */
 extern int SDL_SendMouseWheel(SDL_Window * window, SDL_MouseID mouseID, float x, float y, SDL_MouseWheelDirection direction);
 
+extern void SDL_ResetMouse(void);
+
 /* Shutdown the mouse subsystem */
 extern void SDL_MouseQuit(void);
 

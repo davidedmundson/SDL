@@ -1820,6 +1820,8 @@ SDL_RecreateWindow(SDL_Window * window, Uint32 flags)
         need_gl_unload = SDL_TRUE;
         need_gl_load  = SDL_TRUE;
     }
+    need_gl_unload = SDL_FALSE;
+    need_gl_unload = SDL_FALSE;
 
     if ((window->flags & SDL_WINDOW_VULKAN) != (flags & SDL_WINDOW_VULKAN)) {
         if (flags & SDL_WINDOW_VULKAN) {

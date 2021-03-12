@@ -197,6 +197,19 @@ SDL_GetMouseFocus(void)
 }
 
 void
+SDL_ResetMouse(void)
+{
+    SDL_Mouse *mouse = SDL_GetMouse();
+
+    for (i = 1; i <= sizeof(mouse->buttonstate)*8; ++i) {
+        if (mouse->buttonstate & SDL_BUTTON(i)) {
+            SDL_SendMouseButton(mouse->focus, mouse->mouseID, SDL_RELEASED, i);
+        }
+    }
+    SDL_assert(mouse->buttonstate == 0);
+}
+
+void
 SDL_SetMouseFocus(SDL_Window * window)
 {
     SDL_Mouse *mouse = SDL_GetMouse();
