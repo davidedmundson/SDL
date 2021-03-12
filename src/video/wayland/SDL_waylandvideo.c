@@ -563,26 +563,9 @@ Wayland_GetDisplayDPI(_THIS, SDL_VideoDisplay * sdl_display, float * ddpi, float
     return driverdata->ddpi != 0.0f ? 0 : SDL_SetError("Couldn't get DPI");
 }
 
-void
-Wayland_VideoQuit(_THIS)
+void Wayland_VideoCleanup(_THIS)
 {
     SDL_VideoData *data = _this->driverdata;
-    int i, j;
-
-    Wayland_FiniMouse ();
-
-    for (i = 0; i < _this->num_displays; ++i) {
-        SDL_VideoDisplay *display = &_this->displays[i];
-
-        wl_output_destroy(((SDL_WaylandOutputData*)display->driverdata)->output);
-        SDL_free(display->driverdata);
-        display->driverdata = NULL;
-
-        for (j = display->num_display_modes; j--;) {
-            display->display_modes[j].driverdata = NULL;
-        }
-        display->desktop_mode.driverdata = NULL;
-    }
 
     Wayland_display_destroy_input(data);
     Wayland_display_destroy_pointer_constraints(data);
@@ -593,9 +576,11 @@ Wayland_VideoQuit(_THIS)
 
     if (data->idle_inhibit_manager)
         zwp_idle_inhibit_manager_v1_destroy(data->idle_inhibit_manager);
+    data->idle_inhibit_manager = NULL;
 
     if (data->key_inhibitor_manager)
         zwp_keyboard_shortcuts_inhibit_manager_v1_destroy(data->key_inhibitor_manager);
+    data->key_inhibitor_manager = NULL;
 
     if (data->xkb_context) {
         WAYLAND_xkb_context_unref(data->xkb_context);
@@ -613,30 +598,101 @@ Wayland_VideoQuit(_THIS)
 
     if (data->data_device_manager)
         wl_data_device_manager_destroy(data->data_device_manager);
+    data->data_device_manager = NULL;
 
     if (data->shm)
         wl_shm_destroy(data->shm);
+    data->shm = NULL;
 
     if (data->cursor_theme)
         WAYLAND_wl_cursor_theme_destroy(data->cursor_theme);
+    data->cursor_theme = NULL;
 
     if (data->shell.wl)
         wl_shell_destroy(data->shell.wl);
+    data->shell.wl = NULL;
 
     if (data->shell.xdg)
         xdg_wm_base_destroy(data->shell.xdg);
+    data->shell.xdg = NULL;
 
     if (data->shell.zxdg)
         zxdg_shell_v6_destroy(data->shell.zxdg);
+    data->shell.zxdg = NULL;
 
     if (data->decoration_manager)
         zxdg_decoration_manager_v1_destroy(data->decoration_manager);
+    data->decoration_manager = NULL;
 
     if (data->compositor)
         wl_compositor_destroy(data->compositor);
+    data->compositor = NULL;
 
     if (data->registry)
         wl_registry_destroy(data->registry);
+    data->registry = NULL;
+
+}
+
+SDL_bool Wayland_VideoReconnect(_THIS)
+{
+    SDL_VideoData *data = _this->driverdata;
+
+    SDL_Window *window = NULL;
+
+    SDL_GLContext current_ctx = SDL_GL_GetCurrentContext();
+    SDL_Window *current_window = SDL_GL_GetCurrentWindow();
+
+    Wayland_FiniMouse ();
+
+    SDL_GL_MakeCurrent(NULL, NULL);
+    Wayland_VideoCleanup(_this);
+
+    SDL_ResetKeyboard();
+    SDL_ResetMouse();
+    if (WAYLAND_wl_display_reconnect(data->display) < 0) {
+        return SDL_FALSE;
+    }
+
+    Wayland_VideoInit(_this);
+    WAYLAND_wl_display_roundtrip(data->display);
+    // Second roundtrip to receive all output events.
+    WAYLAND_wl_display_roundtrip(data->display);
+
+    window = _this->windows;
+    while (window) {
+        SDL_RecreateWindow(window, window->flags);
+        window = window->next;
+    }
+
+    if (current_window && current_ctx) {
+        SDL_GL_MakeCurrent (current_window, current_ctx);
+    }
+    return SDL_TRUE;
+}
+
+void
+Wayland_VideoQuit(_THIS)
+{
+    int i, j;
+
+    SDL_VideoData *data = _this->driverdata;
+    Wayland_FiniMouse ();
+
+    for (i = 0; i < _this->num_displays; ++i) {
+        SDL_VideoDisplay *display = &_this->displays[i];
+
+        wl_output_destroy(((SDL_WaylandOutputData*)display->driverdata)->output);
+        SDL_free(display->driverdata);
+        display->driverdata = NULL;
+
+        for (j = display->num_display_modes; j--;) {
+            display->display_modes[j].driverdata = NULL;
+        }
+        display->desktop_mode.driverdata = NULL;
+    }
+
+    Wayland_VideoCleanup(_this);
 
     Wayland_QuitKeyboard(_this);
 

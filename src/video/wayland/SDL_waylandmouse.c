@@ -321,6 +321,7 @@ Wayland_ShowCursor(SDL_Cursor *cursor)
     struct SDL_WaylandInput *input = d->input;
 
     struct wl_pointer *pointer = d->pointer;
+    return -1;
 
     if (!pointer)
         return -1;

@@ -81,6 +81,7 @@ struct SDL_WaylandInput {
 };
 
 extern void Wayland_PumpEvents(_THIS);
+extern SDL_bool Wayland_VideoReconnect(_THIS);
 
 extern void Wayland_add_data_device_manager(SDL_VideoData *d, uint32_t id, uint32_t version);
 

@@ -63,6 +63,7 @@ SDL_WAYLAND_SYM(void, wl_list_remove, (struct wl_list *))
 SDL_WAYLAND_SYM(int, wl_list_length, (const struct wl_list *))
 SDL_WAYLAND_SYM(int, wl_list_empty, (const struct wl_list *))
 SDL_WAYLAND_SYM(void, wl_list_insert_list, (struct wl_list *, struct wl_list *))
+SDL_WAYLAND_SYM(int, wl_display_reconnect, (struct wl_display*));
 
 /* These functions are available in Wayland >= 1.4 */
 SDL_WAYLAND_MODULE(WAYLAND_CLIENT_1_4)
