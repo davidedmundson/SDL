@@ -369,6 +369,7 @@ Wayland_ShowCursor(SDL_Cursor *cursor)
     struct SDL_WaylandInput *input = d->input;
     struct wl_pointer *pointer = d->pointer;
     float scale = 1.0f;
+    return -1;
 
     if (!pointer)
         return -1;

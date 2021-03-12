@@ -185,16 +185,12 @@ SDL_GetMouseFocus(void)
     return mouse->focus;
 }
 
-#if 0
 void
 SDL_ResetMouse(void)
 {
     SDL_Mouse *mouse = SDL_GetMouse();
     Uint8 i;
 
-#ifdef DEBUG_MOUSE
-    printf("Resetting mouse\n");
-#endif
     for (i = 1; i <= sizeof(mouse->buttonstate)*8; ++i) {
         if (mouse->buttonstate & SDL_BUTTON(i)) {
             SDL_SendMouseButton(mouse->focus, mouse->mouseID, SDL_RELEASED, i);
@@ -202,7 +198,6 @@ SDL_ResetMouse(void)
     }
     SDL_assert(mouse->buttonstate == 0);
 }
-#endif
 
 void
 SDL_SetMouseFocus(SDL_Window * window)

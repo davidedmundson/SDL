@@ -1209,7 +1209,7 @@ int Wayland_CreateWindow(_THIS, SDL_Window *window)
 
     data->scale_factor = 1.0;
 
-    if (window->flags & SDL_WINDOW_ALLOW_HIGHDPI) {
+    if (window->flags & SDL_WINDOW_ALLOW_HIGHDPI ) {
         int i;
         for (i=0; i < SDL_GetVideoDevice()->num_displays; i++) {
             float scale = ((SDL_WaylandOutputData*)SDL_GetVideoDevice()->displays[i].driverdata)->scale_factor;
