@@ -50,7 +50,7 @@ typedef struct {
     int                w, h;
 
     /* Either a preloaded cursor, or one we created ourselves */
-    struct wl_cursor   *cursor;
+    char              *cursor;
     void               *shm_data;
 } Wayland_CursorData;
 
@@ -215,7 +215,7 @@ CreateCursorFromWlCursor(SDL_VideoData *d, struct wl_cursor *wlcursor)
         data->hot_y = wlcursor->images[0]->hotspot_y;
         data->w = wlcursor->images[0]->width;
         data->h = wlcursor->images[0]->height;
-        data->cursor= wlcursor;
+        data->cursor= strdup(wlcursor->name);
     } else {
         SDL_OutOfMemory ();
     }
@@ -308,6 +308,9 @@ Wayland_FreeCursor(SDL_Cursor *cursor)
     if (d->surface)
         wl_surface_destroy(d->surface);
 
+    // DAVE - I strdump'd a string so I should free it, but for some reason this is causing an issue on close?
+//     free(d->cursor);
+
     /* Not sure what's meant to happen to shm_data */
     free (cursor->driverdata);
     SDL_free(cursor);
@@ -320,8 +323,8 @@ Wayland_ShowCursor(SDL_Cursor *cursor)
     SDL_VideoData *d = vd->driverdata;
     struct SDL_WaylandInput *input = d->input;
 
+
     struct wl_pointer *pointer = d->pointer;
-    return -1;
 
     if (!pointer)
         return -1;
@@ -335,6 +338,7 @@ Wayland_ShowCursor(SDL_Cursor *cursor)
                                data->surface,
                                data->hot_x,
                                data->hot_y);
+
         wl_surface_attach(data->surface, data->buffer, 0, 0);
         wl_surface_damage(data->surface, 0, 0, data->w, data->h);
         wl_surface_commit(data->surface);
@@ -398,4 +402,74 @@ Wayland_FiniMouse(void)
      * touches SDL_Mouse which is effectively
      * a singleton */
 }
+
+
+void Wayland_RecreateCursor(SDL_Cursor *cursor)
+{
+    SDL_VideoDevice *vd = SDL_GetVideoDevice();
+    SDL_VideoData *video = (SDL_VideoData *) vd->driverdata;
+
+    Wayland_CursorData *d = cursor->driverdata;
+    /* Probably not a cursor we own */
+    if (!d)
+        return;
+
+    if (d->buffer && !d->cursor) {
+        wl_buffer_destroy(d->buffer);
+        d->buffer = NULL;
+    }
+
+    if (d->surface) {
+        wl_surface_destroy(d->surface);
+        d->surface = NULL;
+    }
+
+    // Wayland_FreeCursor seems to think leaking shm_data is fine..so yolo?
+
+    if (d->shm_data) {
+        void *old_data_pointer = d->shm_data;
+        int stride = d->w * 4;
+
+        create_buffer_from_shm(d, d->w, d->h, WL_SHM_FORMAT_ARGB8888);
+
+        SDL_memcpy(d->shm_data,
+            old_data_pointer,
+            stride * d->h);
+
+        d->surface = wl_compositor_create_surface(video->compositor);
+        wl_surface_set_user_data(d->surface, NULL);
+    } else if (d->cursor) {
+        struct wl_cursor *wlcursor = WAYLAND_wl_cursor_theme_get_cursor(video->cursor_theme, d->cursor);
+
+        d->buffer = WAYLAND_wl_cursor_image_get_buffer(wlcursor->images[0]);
+        d->surface = wl_compositor_create_surface(video->compositor);
+        wl_surface_set_user_data(d->surface, NULL);
+        d->hot_x = wlcursor->images[0]->hotspot_x;
+        d->hot_y = wlcursor->images[0]->hotspot_y;
+        d->w = wlcursor->images[0]->width;
+        d->h = wlcursor->images[0]->height;
+        d->cursor= wlcursor;
+    }
+}
+
+void
+Wayland_RecreateCursors()
+{
+    SDL_Mouse *mouse = SDL_GetMouse();
+    if (!mouse) {
+        return;
+    }
+
+    for (SDL_Cursor *cursor = mouse->cursors ; cursor != NULL ; cursor = cursor->next) {
+        Wayland_RecreateCursor(cursor);
+    }
+    if (mouse->def_cursor)
+        Wayland_RecreateCursor(mouse->def_cursor);
+    if (mouse->cur_cursor)
+        Wayland_RecreateCursor(mouse->cur_cursor);
+
+    if (mouse->cursor_shown && mouse->cur_cursor)
+        Wayland_ShowCursor(mouse->cur_cursor);
+}
+
 #endif  /* SDL_VIDEO_DRIVER_WAYLAND */

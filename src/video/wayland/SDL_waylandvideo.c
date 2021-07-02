@@ -643,13 +643,12 @@ SDL_bool Wayland_VideoReconnect(_THIS)
     SDL_GLContext current_ctx = SDL_GL_GetCurrentContext();
     SDL_Window *current_window = SDL_GL_GetCurrentWindow();
 
-    Wayland_FiniMouse ();
-
     SDL_GL_MakeCurrent(NULL, NULL);
     Wayland_VideoCleanup(_this);
 
     SDL_ResetKeyboard();
     SDL_ResetMouse();
+
     if (WAYLAND_wl_display_reconnect(data->display) < 0) {
         return SDL_FALSE;
     }
@@ -664,6 +663,8 @@ SDL_bool Wayland_VideoReconnect(_THIS)
         SDL_RecreateWindow(window, window->flags);
         window = window->next;
     }
+
+    Wayland_RecreateCursors(data);
 
     if (current_window && current_ctx) {
         SDL_GL_MakeCurrent (current_window, current_ctx);

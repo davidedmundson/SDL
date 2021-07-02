@@ -59,6 +59,8 @@
 #include <xkbcommon/xkbcommon.h>
 #include <xkbcommon/xkbcommon-compose.h>
 
+#include <errno.h>
+
 /* Weston uses a ratio of 10 units per scroll tick */
 #define WAYLAND_WHEEL_AXIS_UNIT 10
 
@@ -243,11 +245,13 @@ Wayland_PumpEvents(_THIS)
 
         /* Only send a single quit message, as application shutdown might call
          * SDL_PumpEvents */
-
-        if (!Wayland_VideoReconnect(_this)) {
-            d->display_disconnected = 1;
-            SDL_SendQuit();
+        int ecode = WAYLAND_wl_display_get_error(d->display);
+        if ((ecode == EPIPE || ecode == ECONNRESET)) {
+            if (Wayland_VideoReconnect(_this))
+                return;
         }
+        d->display_disconnected = 1;
+        SDL_SendQuit();
     }
 }
 

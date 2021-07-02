@@ -27,5 +27,6 @@
 
 extern void Wayland_InitMouse(void);
 extern void Wayland_FiniMouse(void);
+extern void Wayland_RecreateCursors(SDL_VideoData *video_data);
 
 #endif
