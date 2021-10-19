@@ -668,7 +668,10 @@ Wayland_VideoInit(_THIS)
 #ifdef HAVE_LIBDECOR_H
     /* Don't have server-side decorations? Try client-side instead. */
     if (!data->decoration_manager && SDL_WAYLAND_HAVE_WAYLAND_LIBDECOR && SDL_GetHintBoolean(SDL_HINT_VIDEO_WAYLAND_ALLOW_LIBDECOR, SDL_TRUE)) {
-        data->shell.libdecor = libdecor_new(data->display, &libdecor_interface);
+        if (!data->shell.libdecor) {
+            data->shell.libdecor = libdecor_new(data->display, &libdecor_interface);
+        }
+
 
         /* If libdecor works, we don't need xdg-shell anymore. */
         if (data->shell.libdecor && data->shell.xdg) {
@@ -799,13 +802,6 @@ void Wayland_VideoCleanup(_THIS)
         zxdg_decoration_manager_v1_destroy(data->decoration_manager);
     data->decoration_manager = NULL;
 
-#ifdef HAVE_LIBDECOR_H
-    if (data->shell.libdecor) {
-        libdecor_unref(data->shell.libdecor);
-        data->shell.libdecor = NULL;
-    }
-#endif
-
     if (data->compositor)
         wl_compositor_destroy(data->compositor);
     data->compositor = NULL;
@@ -875,6 +871,13 @@ Wayland_VideoQuit(_THIS)
     }
 
     Wayland_VideoCleanup(_this);
+
+#ifdef HAVE_LIBDECOR_H
+    if (data->shell.libdecor) {
+        libdecor_unref(data->shell.libdecor);
+        data->shell.libdecor = NULL;
+    }
+#endif
 
     SDL_free(data->classname);
 }
