@@ -689,13 +689,6 @@ void Wayland_VideoCleanup(_THIS)
         zxdg_decoration_manager_v1_destroy(data->decoration_manager);
     data->decoration_manager = NULL;
 
-#ifdef HAVE_LIBDECOR_H
-    if (data->shell.libdecor) {
-        libdecor_unref(data->shell.libdecor);
-        data->shell.libdecor = NULL;
-    }
-#endif
-
     if (data->compositor)
         wl_compositor_destroy(data->compositor);
     data->compositor = NULL;
@@ -765,6 +758,13 @@ Wayland_VideoQuit(_THIS)
     }
 
     Wayland_VideoCleanup(_this);
+
+#ifdef HAVE_LIBDECOR_H
+    if (data->shell.libdecor) {
+        libdecor_unref(data->shell.libdecor);
+        data->shell.libdecor = NULL;
+    }
+#endif
 
     SDL_free(data->classname);
 }
