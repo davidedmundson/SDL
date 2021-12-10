@@ -731,24 +731,22 @@ void Wayland_VideoCleanup(_THIS)
 {
     SDL_VideoData *data = _this->driverdata;
 
-//     //DAVE this screen stuff is new
-//     int i, j;
-//
-//     Wayland_FiniMouse(data);
-//
-//     for (i = 0; i < _this->num_displays; ++i) {
-//         SDL_VideoDisplay *display = &_this->displays[i];
-//
-//         wl_output_destroy(((SDL_WaylandOutputData*)display->driverdata)->output);
-//         SDL_free(display->driverdata);
-//         display->driverdata = NULL;
-//
-//         for (j = display->num_display_modes; j--;) {
-//             display->display_modes[j].driverdata = NULL;
-//         }
-//         display->desktop_mode.driverdata = NULL;
-//     }
-//     // end DAVE
+    int i, j;
+
+    Wayland_FiniMouse(data);
+
+    for (i = 0; i < _this->num_displays; ++i) {
+        SDL_VideoDisplay *display = &_this->displays[i];
+
+        wl_output_destroy(((SDL_WaylandOutputData*)display->driverdata)->output);
+        SDL_free(display->driverdata);
+        display->driverdata = NULL;
+
+        for (j = display->num_display_modes; j--;) {
+            display->display_modes[j].driverdata = NULL;
+        }
+        display->desktop_mode.driverdata = NULL;
+    }
 
     Wayland_display_destroy_input(data);
     Wayland_display_destroy_pointer_constraints(data);
@@ -852,23 +850,7 @@ SDL_bool Wayland_VideoReconnect(_THIS)
 void
 Wayland_VideoQuit(_THIS)
 {
-    int i, j;
-
     SDL_VideoData *data = _this->driverdata;
-    Wayland_FiniMouse (data);
-
-    for (i = 0; i < _this->num_displays; ++i) {
-        SDL_VideoDisplay *display = &_this->displays[i];
-
-        wl_output_destroy(((SDL_WaylandOutputData*)display->driverdata)->output);
-        SDL_free(display->driverdata);
-        display->driverdata = NULL;
-
-        for (j = display->num_display_modes; j--;) {
-            display->display_modes[j].driverdata = NULL;
-        }
-        display->desktop_mode.driverdata = NULL;
-    }
 
     Wayland_VideoCleanup(_this);
 
