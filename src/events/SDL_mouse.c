@@ -200,13 +200,15 @@ void
 SDL_ResetMouse(void)
 {
     SDL_Mouse *mouse = SDL_GetMouse();
+    Uint32 buttonState = GetButtonState(mouse);
+    int i;
 
-    for (i = 1; i <= sizeof(mouse->buttonstate)*8; ++i) {
-        if (mouse->buttonstate & SDL_BUTTON(i)) {
+    for (i = 1; i <= sizeof(buttonState)*8; ++i) {
+        if (buttonState & SDL_BUTTON(i)) {
             SDL_SendMouseButton(mouse->focus, mouse->mouseID, SDL_RELEASED, i);
         }
     }
-    SDL_assert(mouse->buttonstate == 0);
+    SDL_assert(GetButtonState(mouse) == 0);
 }
 
 void
