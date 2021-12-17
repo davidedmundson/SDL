@@ -832,9 +832,6 @@ SDL_bool Wayland_VideoReconnect(_THIS)
     }
 
     Wayland_VideoInit(_this);
-    WAYLAND_wl_display_roundtrip(data->display);
-    // Second roundtrip to receive all output events.
-    WAYLAND_wl_display_roundtrip(data->display);
 
     window = _this->windows;
     while (window) {
