@@ -735,7 +735,7 @@ void Wayland_VideoCleanup(_THIS)
 
     Wayland_FiniMouse(data);
 
-    for (i = 0; i < _this->num_displays; ++i) {
+    for (i = _this->num_displays - 1; i >= 0; --i) {
         SDL_VideoDisplay *display = &_this->displays[i];
 
         wl_output_destroy(((SDL_WaylandOutputData*)display->driverdata)->output);
@@ -746,6 +746,7 @@ void Wayland_VideoCleanup(_THIS)
             display->display_modes[j].driverdata = NULL;
         }
         display->desktop_mode.driverdata = NULL;
+        SDL_DelVideoDisplay(i);
     }
 
     Wayland_display_destroy_input(data);
