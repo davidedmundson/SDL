@@ -975,7 +975,9 @@ Wayland_VideoInit(_THIS)
     wl_registry_add_listener(data->registry, &registry_listener, data);
 
     // First roundtrip to receive all registry objects.
-    WAYLAND_wl_display_roundtrip(data->display);
+    if (WAYLAND_wl_display_roundtrip(data->display) < 0) {
+        return SDL_SetError("Failed to load Wayland initial globals");
+    }
 
     /* Now that we have all the protocols, load libdecor if applicable */
     Wayland_LoadLibdecor(data, SDL_FALSE);
@@ -1153,7 +1155,6 @@ Wayland_VideoCleanup(_THIS)
 SDL_bool
 Wayland_VideoReconnect(_THIS)
 {
-#if 0 /* TODO RECONNECT: Uncomment all when https://invent.kde.org/plasma/kwin/-/wikis/Restarting is completed */
     SDL_VideoData *data = _this->driverdata;
 
     SDL_Window *window = NULL;
@@ -1161,16 +1162,48 @@ Wayland_VideoReconnect(_THIS)
     SDL_GLContext current_ctx = SDL_GL_GetCurrentContext();
     SDL_Window *current_window = SDL_GL_GetCurrentWindow();
 
-    SDL_GL_MakeCurrent(NULL, NULL);
-    Wayland_VideoCleanup(_this);
+    struct wl_display *new_display = WAYLAND_wl_display_connect(NULL);
+    struct wl_display *old_display = data->display;
 
-    SDL_ResetKeyboard();
-    SDL_ResetMouse();
-    if (WAYLAND_wl_display_reconnect(data->display) < 0) {
+#if SDL_VIDEO_OPENGL_EGL
+   if (!_this->gles_data->eglBindClientWaylandDisplayWL) {
+        return SDL_FALSE;
+    }
+#endif
+
+    if (!new_display) {
+        return SDL_FALSE;
+    }
+    if (WAYLAND_wl_display_roundtrip(new_display) < 0) {
+        WAYLAND_wl_display_disconnect(new_display);
         return SDL_FALSE;
     }
 
-    Wayland_VideoInit(_this);
+    SDL_GL_MakeCurrent(NULL, NULL);
+
+    Wayland_VideoCleanup(_this);
+
+    window = _this->windows;
+    while (window) {
+        window->display_index = -1;
+        window = window->next;
+    }
+
+    SDL_ResetKeyboard();
+    SDL_ResetMouse();
+
+    data->display = new_display;
+    data->initializing = SDL_TRUE;
+
+    if (Wayland_VideoInit(_this) != 0) {
+        return SDL_FALSE;
+    }
+
+#if SDL_VIDEO_OPENGL_EGL
+    if (!_this->gles_data->eglBindClientWaylandDisplayWL( _this->egl_data->egl_display, data->display)) {
+        return SDL_FALSE;
+    }
+#endif
 
     window = _this->windows;
     while (window) {
@@ -1192,10 +1225,10 @@ Wayland_VideoReconnect(_THIS)
     if (current_window && current_ctx) {
         SDL_GL_MakeCurrent (current_window, current_ctx);
     }
+
+    WAYLAND_wl_display_disconnect(old_display);
+
     return SDL_TRUE;
-#else
-    return SDL_FALSE;
-#endif /* 0 */
 }
 
 void
