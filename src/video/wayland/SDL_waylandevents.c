@@ -475,7 +475,14 @@ void Wayland_PumpEvents(SDL_VideoDevice *_this)
          *
          * Try to recover once, then quit.
          */
-        if (!Wayland_VideoReconnect(_this)) {
+        int errCode = WAYLAND_wl_display_get_error(d->display);
+        SDL_bool reconnected = SDL_FALSE;
+
+        if (SDL_getenv("SDL_VIDEO_WAYLAND_RECONNECT") && (errCode == EPIPE || errCode == ECONNRESET)) {
+            reconnected = Wayland_VideoReconnect(_this);
+        }
+
+        if (!reconnected) {
             d->display_disconnected = 1;
 
             /* Only send a single quit message, as application shutdown might call
