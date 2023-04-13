@@ -41,7 +41,8 @@ Wayland_GLES_LoadLibrary(_THIS, const char *path) {
     SDL_VideoData *data = (SDL_VideoData *) _this->driverdata;
 
     ret = SDL_EGL_LoadLibrary(_this, path, (NativeDisplayType) data->display, 0);
-
+    _this->gles_data = (struct SDL_PrivateGLESData *) SDL_calloc(1, sizeof(struct SDL_PrivateGLESData));
+    _this->gles_data->eglBindClientWaylandDisplayWL = SDL_EGL_GetProcAddress(_this, "eglBindClientWaylandDisplayWL");
     Wayland_PumpEvents(_this);
     WAYLAND_wl_display_flush(data->display);
 

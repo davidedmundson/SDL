@@ -28,7 +28,8 @@
 
 typedef struct SDL_PrivateGLESData
 {
-    int dummy;
+    EGLBoolean (EGLAPIENTRY *eglBindClientWaylandDisplayWL) (EGLDisplay dpy, struct wl_display *display);
+
 } SDL_PrivateGLESData;
 
 /* OpenGLES functions */

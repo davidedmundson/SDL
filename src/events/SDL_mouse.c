@@ -273,7 +273,6 @@ SDL_GetMouseFocus(void)
  * uncomment it at the right time.
  * -flibit
  */
-#if 0
 void
 SDL_ResetMouse(void)
 {
@@ -288,7 +287,6 @@ SDL_ResetMouse(void)
     }
     SDL_assert(GetButtonState(mouse, SDL_FALSE) == 0);
 }
-#endif /* 0 */
 
 void
 SDL_SetMouseFocus(SDL_Window * window)

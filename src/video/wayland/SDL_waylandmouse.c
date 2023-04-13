@@ -534,14 +534,14 @@ Wayland_ShowCursor(SDL_Cursor *cursor)
             Wayland_input_unlock_pointer(input);
             input->relative_mode_override = SDL_FALSE;
         }
-	    
+
     }
     else
     {
         input->cursor_visible = SDL_FALSE;
         wl_pointer_set_cursor(pointer, input->pointer_enter_serial, NULL, 0, 0);
     }
-    
+
     return 0;
 }
 
@@ -601,7 +601,6 @@ Wayland_EmulateMouseWarpChanged(void *userdata, const char *name, const char *ol
     input->warp_emulation_prohibited = !SDL_GetStringBoolean(hint, !input->warp_emulation_prohibited);
 }
 
-#if 0 /* TODO RECONNECT: See waylandvideo.c for more information! */
 static void
 Wayland_RecreateCursor(SDL_Cursor *cursor, SDL_VideoData *vdata)
 {
@@ -657,7 +656,6 @@ Wayland_RecreateCursors(void)
         }
     }
 }
-#endif /* 0 */
 
 void
 Wayland_InitMouse(void)
@@ -680,7 +678,7 @@ Wayland_InitMouse(void)
 
     SDL_SetDefaultCursor(Wayland_CreateDefaultCursor());
 
-    SDL_AddHintCallback(SDL_HINT_VIDEO_WAYLAND_EMULATE_MOUSE_WARP, 
+    SDL_AddHintCallback(SDL_HINT_VIDEO_WAYLAND_EMULATE_MOUSE_WARP,
                         Wayland_EmulateMouseWarpChanged, input);
 }
 
@@ -696,7 +694,7 @@ Wayland_FiniMouse(SDL_VideoData *data)
     SDL_free(data->cursor_themes);
     data->cursor_themes = NULL;
 
-    SDL_DelHintCallback(SDL_HINT_VIDEO_WAYLAND_EMULATE_MOUSE_WARP, 
+    SDL_DelHintCallback(SDL_HINT_VIDEO_WAYLAND_EMULATE_MOUSE_WARP,
                         Wayland_EmulateMouseWarpChanged, input);
 }
 
