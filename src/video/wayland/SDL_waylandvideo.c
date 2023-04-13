@@ -888,7 +888,9 @@ int Wayland_VideoInit(SDL_VideoDevice *_this)
     wl_registry_add_listener(data->registry, &registry_listener, data);
 
     // First roundtrip to receive all registry objects.
-    WAYLAND_wl_display_roundtrip(data->display);
+    if (WAYLAND_wl_display_roundtrip(data->display) < 0) {
+        return SDL_SetError("Failed to load Wayland initial globals");
+    }
 
     /* Now that we have all the protocols, load libdecor if applicable */
     Wayland_LoadLibdecor(data, SDL_FALSE);
@@ -1047,49 +1049,68 @@ static void Wayland_VideoCleanup(SDL_VideoDevice *_this)
 
 SDL_bool Wayland_VideoReconnect(SDL_VideoDevice *_this)
 {
-#if 0 /* TODO RECONNECT: Uncomment all when https://invent.kde.org/plasma/kwin/-/wikis/Restarting is completed */
     SDL_VideoData *data = _this->driverdata;
-
     SDL_Window *window = NULL;
 
-    SDL_GLContext current_ctx = SDL_GL_GetCurrentContext();
-    SDL_Window *current_window = SDL_GL_GetCurrentWindow();
+    struct wl_display *new_display = WAYLAND_wl_display_connect(NULL);
+    struct wl_display *old_display = data->display;
 
-    SDL_GL_MakeCurrent(NULL, NULL);
-    Wayland_VideoCleanup(_this);
+    SDL_Event event;
 
-    SDL_ResetKeyboard();
-    SDL_ResetMouse();
-    if (WAYLAND_wl_display_reconnect(data->display) < 0) {
+    if (!new_display) {
+        return SDL_FALSE;
+    }
+    if (WAYLAND_wl_display_roundtrip(new_display) < 0) {
+        WAYLAND_wl_display_disconnect(new_display);
         return SDL_FALSE;
     }
 
-    Wayland_VideoInit(_this);
+    SDL_GL_MakeCurrent(NULL, NULL);
+
+    Wayland_VideoCleanup(_this);
 
     window = _this->windows;
     while (window) {
-        /* We're going to cheat _just_ for a second and strip the OpenGL flag.
+        // window->display_index = -1;
+        window = window->next;
+    }
+
+    SDL_ResetKeyboard();
+    SDL_ResetMouse();
+
+    data->display = new_display;
+    data->initializing = SDL_TRUE;
+
+    if (Wayland_VideoInit(_this) != 0) {
+        return SDL_FALSE;
+    }
+
+    window = _this->windows;
+    while (window) {
+        /* When EGL supports migrating displays across connections we need to
+         * enable the following code.
+         *
+         * We're going to cheat _just_ for a second and strip the OpenGL flag.
          * The Wayland driver actually forces it in CreateWindow, and
          * RecreateWindow does a bunch of unloading/loading of libGL, so just
          * strip the flag so RecreateWindow doesn't mess with the GL context,
          * and CreateWindow will add it right back!
          * -flibit
+         *  window->flags &= ~SDL_WINDOW_OPENGL;
          */
-        window->flags &= ~SDL_WINDOW_OPENGL;
 
         SDL_RecreateWindow(window, window->flags);
         window = window->next;
     }
 
+    event.type = SDL_EVENT_RENDER_DEVICE_RESET;
+    SDL_PushEvent(&event);
+
     Wayland_RecreateCursors();
 
-    if (current_window && current_ctx) {
-        SDL_GL_MakeCurrent (current_window, current_ctx);
-    }
+    WAYLAND_wl_display_disconnect(old_display);
+
     return SDL_TRUE;
-#else
-    return SDL_FALSE;
-#endif /* 0 */
 }
 
 void Wayland_VideoQuit(SDL_VideoDevice *_this)

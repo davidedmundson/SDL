@@ -696,8 +696,8 @@ static Uint32 SDLCALL Wayland_GetGlobalMouseState(float *x, float *y)
     return ret;
 }
 
-#if 0  /* TODO RECONNECT: See waylandvideo.c for more information! */
-static void Wayland_RecreateCursor(SDL_Cursor *cursor, SDL_VideoData *vdata)
+static void
+Wayland_RecreateCursor(SDL_Cursor *cursor, SDL_VideoData *vdata)
 {
     Wayland_CursorData *cdata = (Wayland_CursorData *) cursor->driverdata;
 
@@ -750,7 +750,6 @@ void Wayland_RecreateCursors(void)
         }
     }
 }
-#endif /* 0 */
 
 void Wayland_InitMouse(void)
 {
