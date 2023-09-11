@@ -539,6 +539,68 @@ static shader_data *datas;
 static thread_data *threads;
 #endif
 
+static void setup_window(int index)
+{
+    int w, h;
+    shader_data *data;
+    int status = SDL_GL_MakeCurrent(state->windows[index], context[index]);
+    if (status) {
+        SDL_Log("SDL_GL_MakeCurrent(): %s\n", SDL_GetError());
+
+        /* Continue for next window */
+        return;
+    }
+    SDL_GetWindowSizeInPixels(state->windows[index], &w, &h);
+    ctx.glViewport(0, 0, w, h);
+
+    data = &datas[index];
+    data->angle_x = 0;
+    data->angle_y = 0;
+    data->angle_z = 0;
+
+    /* Shader Initialization */
+    process_shader(&data->shader_vert, g_shader_vert_src, GL_VERTEX_SHADER);
+    process_shader(&data->shader_frag, g_shader_frag_src, GL_FRAGMENT_SHADER);
+
+    /* Create shader_program (ready to attach shaders) */
+    data->shader_program = GL_CHECK(ctx.glCreateProgram());
+
+    /* Attach shaders and link shader_program */
+    link_program(data);
+
+    /* Get attribute locations of non-fixed attributes like color and texture coordinates. */
+    data->attr_position = GL_CHECK(ctx.glGetAttribLocation(data->shader_program, "av4position"));
+    data->attr_color = GL_CHECK(ctx.glGetAttribLocation(data->shader_program, "av3color"));
+
+    /* Get uniform locations */
+    data->attr_mvp = GL_CHECK(ctx.glGetUniformLocation(data->shader_program, "mvp"));
+
+    GL_CHECK(ctx.glUseProgram(data->shader_program));
+
+    /* Enable attributes for position, color and texture coordinates etc. */
+    GL_CHECK(ctx.glEnableVertexAttribArray(data->attr_position));
+    GL_CHECK(ctx.glEnableVertexAttribArray(data->attr_color));
+
+    /* Populate attributes for position, color and texture coordinates etc. */
+
+    GL_CHECK(ctx.glGenBuffers(1, &data->position_buffer));
+    GL_CHECK(ctx.glBindBuffer(GL_ARRAY_BUFFER, data->position_buffer));
+    GL_CHECK(ctx.glBufferData(GL_ARRAY_BUFFER, sizeof(g_vertices), g_vertices, GL_STATIC_DRAW));
+    GL_CHECK(ctx.glVertexAttribPointer(data->attr_position, 3, GL_FLOAT, GL_FALSE, 0, 0));
+    GL_CHECK(ctx.glBindBuffer(GL_ARRAY_BUFFER, 0));
+
+    GL_CHECK(ctx.glGenBuffers(1, &data->color_buffer));
+    GL_CHECK(ctx.glBindBuffer(GL_ARRAY_BUFFER, data->color_buffer));
+    GL_CHECK(ctx.glBufferData(GL_ARRAY_BUFFER, sizeof(g_colors), g_colors, GL_STATIC_DRAW));
+    GL_CHECK(ctx.glVertexAttribPointer(data->attr_color, 3, GL_FLOAT, GL_FALSE, 0, 0));
+    GL_CHECK(ctx.glBindBuffer(GL_ARRAY_BUFFER, 0));
+
+    GL_CHECK(ctx.glEnable(GL_CULL_FACE));
+    GL_CHECK(ctx.glEnable(GL_DEPTH_TEST));
+
+    SDL_GL_MakeCurrent(state->windows[index], NULL);
+}
+
 static void
 render_window(int index)
 {
@@ -641,6 +703,20 @@ loop(void)
     /* Check for events */
     while (SDL_PollEvent(&event) && !done) {
         SDLTest_CommonEvent(state, &event, &done);
+        if (event.type == SDL_EVENT_RENDER_DEVICE_RESET)  {
+            for (i = 0; i < state->num_windows; ++i) {
+                context[i] = SDL_GL_CreateContext(state->windows[i]);
+            }
+            /* Important: call this *after* creating the context */
+            if (LoadContext(&ctx) < 0) {
+                SDL_Log("Could not load GLES2 functions\n");
+                quit(2);
+                return;
+            }
+            for (i = 0; i < state->num_windows; ++i) {
+                setup_window(i);
+            }
+        }
     }
     if (!done) {
         for (i = 0; i < state->num_windows; ++i) {
@@ -672,7 +748,6 @@ int main(int argc, char *argv[])
     const SDL_DisplayMode *mode;
     Uint64 then, now;
     int status;
-    shader_data *data;
 
     /* Initialize parameters */
     fsaa = 0;
@@ -847,64 +922,7 @@ int main(int argc, char *argv[])
 
     /* Set rendering settings for each context */
     for (i = 0; i < state->num_windows; ++i) {
-
-        int w, h;
-        status = SDL_GL_MakeCurrent(state->windows[i], context[i]);
-        if (status) {
-            SDL_Log("SDL_GL_MakeCurrent(): %s\n", SDL_GetError());
-
-            /* Continue for next window */
-            continue;
-        }
-        SDL_GetWindowSizeInPixels(state->windows[i], &w, &h);
-        ctx.glViewport(0, 0, w, h);
-
-        data = &datas[i];
-        data->angle_x = 0;
-        data->angle_y = 0;
-        data->angle_z = 0;
-
-        /* Shader Initialization */
-        process_shader(&data->shader_vert, g_shader_vert_src, GL_VERTEX_SHADER);
-        process_shader(&data->shader_frag, g_shader_frag_src, GL_FRAGMENT_SHADER);
-
-        /* Create shader_program (ready to attach shaders) */
-        data->shader_program = GL_CHECK(ctx.glCreateProgram());
-
-        /* Attach shaders and link shader_program */
-        link_program(data);
-
-        /* Get attribute locations of non-fixed attributes like color and texture coordinates. */
-        data->attr_position = GL_CHECK(ctx.glGetAttribLocation(data->shader_program, "av4position"));
-        data->attr_color = GL_CHECK(ctx.glGetAttribLocation(data->shader_program, "av3color"));
-
-        /* Get uniform locations */
-        data->attr_mvp = GL_CHECK(ctx.glGetUniformLocation(data->shader_program, "mvp"));
-
-        GL_CHECK(ctx.glUseProgram(data->shader_program));
-
-        /* Enable attributes for position, color and texture coordinates etc. */
-        GL_CHECK(ctx.glEnableVertexAttribArray(data->attr_position));
-        GL_CHECK(ctx.glEnableVertexAttribArray(data->attr_color));
-
-        /* Populate attributes for position, color and texture coordinates etc. */
-
-        GL_CHECK(ctx.glGenBuffers(1, &data->position_buffer));
-        GL_CHECK(ctx.glBindBuffer(GL_ARRAY_BUFFER, data->position_buffer));
-        GL_CHECK(ctx.glBufferData(GL_ARRAY_BUFFER, sizeof(g_vertices), g_vertices, GL_STATIC_DRAW));
-        GL_CHECK(ctx.glVertexAttribPointer(data->attr_position, 3, GL_FLOAT, GL_FALSE, 0, 0));
-        GL_CHECK(ctx.glBindBuffer(GL_ARRAY_BUFFER, 0));
-
-        GL_CHECK(ctx.glGenBuffers(1, &data->color_buffer));
-        GL_CHECK(ctx.glBindBuffer(GL_ARRAY_BUFFER, data->color_buffer));
-        GL_CHECK(ctx.glBufferData(GL_ARRAY_BUFFER, sizeof(g_colors), g_colors, GL_STATIC_DRAW));
-        GL_CHECK(ctx.glVertexAttribPointer(data->attr_color, 3, GL_FLOAT, GL_FALSE, 0, 0));
-        GL_CHECK(ctx.glBindBuffer(GL_ARRAY_BUFFER, 0));
-
-        GL_CHECK(ctx.glEnable(GL_CULL_FACE));
-        GL_CHECK(ctx.glEnable(GL_DEPTH_TEST));
-
-        SDL_GL_MakeCurrent(state->windows[i], NULL);
+        setup_window(i);
     }
 
     /* Main render loop */

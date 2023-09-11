@@ -63,9 +63,8 @@ static void loop(void)
 {
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
-
         /* Re-create when window surface has been resized */
-        if (e.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED) {
+        if (e.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED || e.type == SDL_EVENT_RENDER_DEVICE_RESET) {
 
             SDL_DestroyRenderer(renderer);
 
