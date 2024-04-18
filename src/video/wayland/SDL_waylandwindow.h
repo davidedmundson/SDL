@@ -175,6 +175,9 @@ struct SDL_WindowData
 
     SDL_HitTestResult hit_test_result;
 
+    /** Icon set before a window is created*/
+    SDL_Surface* pending_icon;
+
     struct wl_list external_window_list_link;
 };
 
@@ -199,6 +202,7 @@ extern void Wayland_SetWindowMinimumSize(SDL_VideoDevice *_this, SDL_Window *win
 extern void Wayland_SetWindowMaximumSize(SDL_VideoDevice *_this, SDL_Window *window);
 extern void Wayland_GetWindowSizeInPixels(SDL_VideoDevice *_this, SDL_Window *window, int *w, int *h);
 extern int Wayland_SetWindowModalFor(SDL_VideoDevice *_this, SDL_Window *modal_window, SDL_Window *parent_window);
+extern int Wayland_SetWindowIcon(SDL_VideoDevice *_this, SDL_Window *window, SDL_Surface *icon);
 extern void Wayland_SetWindowTitle(SDL_VideoDevice *_this, SDL_Window *window);
 extern void Wayland_ShowWindowSystemMenu(SDL_Window *window, int x, int y);
 extern void Wayland_DestroyWindow(SDL_VideoDevice *_this, SDL_Window *window);

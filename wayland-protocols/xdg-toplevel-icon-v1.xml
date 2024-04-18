@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<protocol name="xdg_toplevel_icon_v1">
+
+  <copyright>
+    Copyright © 2023-2024 Matthias Klumpp
+
+    Permission is hereby granted, free of charge, to any person obtaining a
+    copy of this software and associated documentation files (the "Software"),
+    to deal in the Software without restriction, including without limitation
+    the rights to use, copy, modify, merge, publish, distribute, sublicense,
+    and/or sell copies of the Software, and to permit persons to whom the
+    Software is furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice (including the next
+    paragraph) shall be included in all copies or substantial portions of the
+    Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
+    THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+    DEALINGS IN THE SOFTWARE.
+  </copyright>
+
+  <description summary="protocol to assign explicit icons to toplevels">
+    This protocol allows clients to set icons for their toplevel surfaces
+    either via an XDG icon stock (using an icon name), or from pixel data.
+
+    A toplevel icon represents the individual toplevel (unlike the application
+    or launcher icon, which represents the application as a whole), and may be
+    shown in window switchers, window overviews and taskbars that list
+    individual windows.
+
+    This document adheres to RFC 2119 when using words like "must",
+    "should", "may", etc.
+
+    Warning! The protocol described in this file is currently in the testing
+    phase. Backward compatible changes may be added together with the
+    corresponding interface version bump. Backward incompatible changes can
+    only be done by creating a new major version of the extension.
+  </description>
+
+  <interface name="xdg_toplevel_icon_v1" version="1">
+    <description summary="interface to set toplevel window icons">
+      This interface provides a way for clients to set a dedicated icon for
+      their toplevels to represent them in overviews.
+
+      Icons are supposed to be static, and while it is allowed to change an
+      icon for an already existing window, icons should not be used to convey
+      status information or try to be animated.
+      Compositors may rate-limit toplevel icon changes.
+
+      An icon can either be set from an XDG stock icon via 'set_icon_name' or
+      from pixel data via 'set_icon_buffer'.
+
+      In case both pixel data and an icon name are set by the client, the named
+      icon must always be preferred as long as it is valid and found in the
+      current theme.
+
+      The compositor may alter the icon as it sees fit (for example, scale it,
+      desaturate it or tint it) in order to integrate it with the environment.
+    </description>
+
+    <enum name="error">
+      <entry name="wrong_format" summary="the provided icon does not match the requested format"
+	     value="1"/>
+    </enum>
+
+    <request name="set_icon_name">
+      <description summary="set the toplevel icon via a stock icon name, or clear the icon">
+        This request assigns an icon to 'toplevel' using its XDG icon-theme
+        name, or clears the toplevel icon.
+        This state is double-buffered and is applied on the next
+        wl_surface.commit of the toplevel.
+
+        The request must specify an icon name for a stock icon in the icon
+        theme.
+        If 'icon_name' is set to null, the icon of the respective toplevel is
+        reset to its default icon (usually the icon of the application,
+        derived from its desktop-entry file, or a placeholder icon).
+
+        The compositor must resolve 'icon_name' according to the lookup rules
+        described in the XDG icon theme specification[1] using the
+        environment's current icon theme.
+        If the icon name can not be resolved to a valid icon, the compositor
+        must emit an 'icon_failed' event. If an icon was successfully set,
+        an 'icon_assigned' event must be emitted.
+
+        If the icon name is null and the icon is reset to its default,
+        an 'icon_assigned' event must always be emitted in response.
+
+        This request must be honored if sent as part of the xdg_toplevel's
+        configure sequence. The client can send it at a later time to request
+        an update of the icon.
+
+        If a compositor does not support setting an icon by its name, it must
+        reply with 'icon_failed' to all 'set_icon_name' requests.
+
+        [1]: https://specifications.freedesktop.org/icon-theme-spec/icon-theme-spec-latest.html
+      </description>
+      <arg name="toplevel" type="object" interface="xdg_toplevel" summary="the toplevel to act on"/>
+      <arg name="icon_name" type="string" allow-null="true"/>
+    </request>
+
+
+    <request name="set_icon_buffer">
+      <description summary="set a toplevel icon from a pixel buffer">
+        This request assigns a window icon to 'toplevel' using pixel data
+        supplied as wl_buffer.
+        This state is double-buffered and is applied on the next
+        wl_surface.commit of the toplevel.
+
+        This request provides the compositor with pixel data for the window
+        icon of 'toplevel' for the scaling factor 'scale'.
+
+        The client should submit pixel data for all icon sizes it can provide.
+
+        The wl_buffer supplying pixel data as 'icon' must be backed by wl_shm
+        and must be a square (width and height being equal).
+        If any of the buffer requirements are not fulfilled, a 'wrong_format'
+        error must be raised.
+
+        The client may invoke this request multiple times to provide an icon in
+        multiple sizes.
+        If the compositor alreaey has a buffer of the same size and scale from
+        a previous 'set_icon_buffer' request, data from the latest request
+        overrides the preexisting pixel data.
+        To reset to icon to the compositor's default, 'set_icon_name' with a
+        'icon_name' of null should be called.
+      </description>
+      <arg name="toplevel" type="object" interface="xdg_toplevel" summary="the toplevel to act on"/>
+      <arg name="icon" type="object" interface="wl_buffer"/>
+    </request>
+
+
+  </interface>
+
+</protocol>

@@ -30,6 +30,8 @@
 #include "SDL_waylandevents_c.h"
 #include "SDL_waylandwindow.h"
 #include "SDL_waylandvideo.h"
+#include "SDL_waylandshmbuffer.h"
+
 #include "../../SDL_hints_c.h"
 
 #include "xdg-shell-client-protocol.h"
@@ -39,6 +41,7 @@
 #include "viewporter-client-protocol.h"
 #include "fractional-scale-v1-client-protocol.h"
 #include "xdg-foreign-unstable-v2-client-protocol.h"
+#include "xdg-toplevel-icon-v1-client-protocol.h"
 
 #ifdef HAVE_LIBDECOR_H
 #include <libdecor.h>
@@ -1654,6 +1657,11 @@ void Wayland_ShowWindow(SDL_VideoDevice *_this, SDL_Window *window)
 
     /* Restore state that was set prior to this call */
     Wayland_SetWindowTitle(_this, window);
+    if (data->pending_icon) {
+        Wayland_SetWindowIcon(_this, window, data->pending_icon);
+        SDL_DestroySurface(data->pending_icon);
+        data->pending_icon = NULL;
+    }
 
     /* We have to wait until the surface gets a "configure" event, or use of
      * this surface will fail. This is a new rule for xdg_shell.
@@ -2474,6 +2482,60 @@ void Wayland_GetWindowSizeInPixels(SDL_VideoDevice *_this, SDL_Window *window, i
 
     *w = data->current.drawable_width;
     *h = data->current.drawable_height;
+}
+
+int Wayland_SetWindowIcon(SDL_VideoDevice *_this, SDL_Window *window, SDL_Surface *icon)
+{
+    SDL_WindowData *wind = window->driverdata;
+    SDL_VideoData *viddata = _this->driverdata;
+
+    if (!viddata->xdg_toplevel_icon) {
+        return SDL_SetError("Unable to set the window's icon. Missing compositor support");
+    }
+
+    struct xdg_toplevel *toplevel = NULL;
+
+    if (wind->shell_surface_type == WAYLAND_SURFACE_XDG_TOPLEVEL && wind->shell_surface.xdg.roleobj.toplevel) {
+        toplevel = wind->shell_surface.xdg.roleobj.toplevel;
+    }
+#ifdef HAVE_LIBDECOR_H
+    if (wind->shell_surface_type == WAYLAND_SURFACE_LIBDECOR && wind->shell_surface.libdecor.frame) {
+        toplevel = libdecor_frame_get_xdg_toplevel(wind->shell_surface.libdecor.frame);
+    }
+#endif
+
+    if (toplevel) {
+        if (icon) {
+            struct Wayland_SHMBuffer shmBuffer;
+            if (Wayland_AllocSHMBuffer(icon->w, icon->h, &shmBuffer) != 0) {
+                return SDL_SetError("Unable to set the window's icon. Failed to allocate icon memory");
+            }
+
+            SDL_PremultiplyAlpha(icon->w, icon->h,
+                                icon->format->format, icon->pixels, icon->pitch,
+                                SDL_PIXELFORMAT_ARGB8888, shmBuffer.shm_data, icon->w * 4);
+
+            xdg_toplevel_icon_v1_set_icon_buffer(viddata->xdg_toplevel_icon, wind->shell_surface.xdg.roleobj.toplevel, shmBuffer.wl_buffer);
+            Wayland_ReleaseSHMBuffer(&shmBuffer);
+        } else {
+            xdg_toplevel_icon_v1_set_icon_buffer(viddata->xdg_toplevel_icon, wind->shell_surface.xdg.roleobj.toplevel, NULL);
+        }
+    } else {
+        // top level is not yet created, cache the icon for potentially sending later
+
+        if (wind->pending_icon == icon) {
+            return 0;
+        }
+        if (wind->pending_icon) {
+            SDL_DestroySurface(wind->pending_icon);
+            wind->pending_icon = NULL;
+        }
+        if (icon) {
+            wind->pending_icon = SDL_DuplicateSurface(icon);
+        }
+    }
+
+    return 0;
 }
 
 void Wayland_SetWindowTitle(SDL_VideoDevice *_this, SDL_Window *window)
