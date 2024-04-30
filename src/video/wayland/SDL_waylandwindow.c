@@ -1569,8 +1569,12 @@ void Wayland_ShowWindow(SDL_VideoDevice *_this, SDL_Window *window)
                 zxdg_exported_v2_add_listener(data->exported, &exported_v2_listener, data);
             }
 
-            if (c->xdg_toplevel_icon_v1 && data->icon.wl_buffer) {
-                xdg_toplevel_icon_v1_set_icon_buffer(_this->driverdata->xdg_toplevel_icon_v1, libdecor_frame_get_xdg_toplevel(data->shell_surface.libdecor.frame), data->icon.wl_buffer, 1);
+            if (c->xdg_toplevel_icon_manager_v1 && data->icon.wl_buffer) {
+                  struct xdg_toplevel_icon_v1 *xdg_icon = xdg_toplevel_icon_manager_v1_create_icon(_this->driverdata->xdg_toplevel_icon_manager_v1);
+                xdg_toplevel_icon_v1_set_icon_buffer(xdg_icon, data->icon.wl_buffer, 1);
+                xdg_toplevel_icon_manager_v1_set_icon(_this->driverdata->xdg_toplevel_icon_manager_v1,
+                                                      libdecor_frame_get_xdg_toplevel(data->shell_surface.libdecor.frame),
+                                                      xdg_icon);
             }
 
             SDL_SetProperty(props, SDL_PROP_WINDOW_WAYLAND_XDG_SURFACE_POINTER, libdecor_frame_get_xdg_surface(data->shell_surface.libdecor.frame));
@@ -1653,8 +1657,12 @@ void Wayland_ShowWindow(SDL_VideoDevice *_this, SDL_Window *window)
                 zxdg_exported_v2_add_listener(data->exported, &exported_v2_listener, data);
             }
 
-            if (c->xdg_toplevel_icon_v1 && data->icon.wl_buffer) {
-                xdg_toplevel_icon_v1_set_icon_buffer(_this->driverdata->xdg_toplevel_icon_v1, data->shell_surface.xdg.roleobj.toplevel, data->icon.wl_buffer, 1);
+            if (c->xdg_toplevel_icon_manager_v1 && data->icon.wl_buffer) {
+            struct xdg_toplevel_icon_v1 *xdg_icon = xdg_toplevel_icon_manager_v1_create_icon(_this->driverdata->xdg_toplevel_icon_manager_v1);
+                xdg_toplevel_icon_v1_set_icon_buffer(xdg_icon, data->icon.wl_buffer, 1);
+                xdg_toplevel_icon_manager_v1_set_icon(_this->driverdata->xdg_toplevel_icon_manager_v1,
+                                                      data->shell_surface.xdg.roleobj.toplevel,
+                                                      xdg_icon);
             }
 
             SDL_SetProperty(props, SDL_PROP_WINDOW_WAYLAND_XDG_TOPLEVEL_POINTER, data->shell_surface.xdg.roleobj.toplevel);
@@ -2505,7 +2513,7 @@ int Wayland_SetWindowIcon(SDL_VideoDevice *_this, SDL_Window *window, SDL_Surfac
     SDL_WindowData *wind = window->driverdata;
     struct xdg_toplevel *toplevel = NULL;
 
-    if (!_this->driverdata->xdg_toplevel_icon_v1) {
+    if (!_this->driverdata->xdg_toplevel_icon_manager_v1) {
         return SDL_SetError("wayland: cannot set icon; xdg_toplevel_icon_v1 protocol not supported");
     }
 
@@ -2530,11 +2538,9 @@ int Wayland_SetWindowIcon(SDL_VideoDevice *_this, SDL_Window *window, SDL_Surfac
     SDL_PremultiplyAlpha(icon->w, icon->h, icon->format->format, icon->pixels, icon->pitch, SDL_PIXELFORMAT_ARGB8888, wind->icon.shm_data, icon->w * 4);
 
     if (toplevel) {
-        /* If the new icon size doesn't match the old one, it will be added as an additional size instead
-         * of overwriting the existing one, so the window icon must be explicitly cleared first.
-         */
-        xdg_toplevel_icon_v1_set_icon_name(_this->driverdata->xdg_toplevel_icon_v1, toplevel, NULL);
-        xdg_toplevel_icon_v1_set_icon_buffer(_this->driverdata->xdg_toplevel_icon_v1, toplevel, wind->icon.wl_buffer, 1);
+        struct xdg_toplevel_icon_v1 *xdg_icon = xdg_toplevel_icon_manager_v1_create_icon(_this->driverdata->xdg_toplevel_icon_manager_v1);
+        xdg_toplevel_icon_v1_set_icon_buffer(xdg_icon, wind->icon.wl_buffer, 1);
+        xdg_toplevel_icon_manager_v1_set_icon(_this->driverdata->xdg_toplevel_icon_manager_v1, toplevel, xdg_icon);
     }
 
     return 0;

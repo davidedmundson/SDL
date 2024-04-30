@@ -1090,8 +1090,8 @@ static void display_handle_global(void *data, struct wl_registry *registry, uint
         }
     } else if (SDL_strcmp(interface, "zxdg_exporter_v2") == 0) {
         d->zxdg_exporter_v2 = wl_registry_bind(d->registry, id, &zxdg_exporter_v2_interface, 1);
-    } else if (SDL_strcmp(interface, "xdg_toplevel_icon_v1") == 0) {
-        d->xdg_toplevel_icon_v1 = wl_registry_bind(d->registry, id, &xdg_toplevel_icon_v1_interface, 1);
+    } else if (SDL_strcmp(interface, "xdg_toplevel_icon_manager_v1") == 0) {
+        d->xdg_toplevel_icon_manager_v1 = wl_registry_bind(d->registry, id, &xdg_toplevel_icon_manager_v1_interface, 1);
     } else if (SDL_strcmp(interface, "kde_output_order_v1") == 0) {
         d->kde_output_order = wl_registry_bind(d->registry, id, &kde_output_order_v1_interface, 1);
         kde_output_order_v1_add_listener(d->kde_output_order, &kde_output_order_listener, d);
@@ -1350,9 +1350,9 @@ static void Wayland_VideoCleanup(SDL_VideoDevice *_this)
         data->zxdg_exporter_v2 = NULL;
     }
 
-    if (data->xdg_toplevel_icon_v1) {
-        xdg_toplevel_icon_v1_destroy(data->xdg_toplevel_icon_v1);
-        data->xdg_toplevel_icon_v1 = NULL;
+    if (data->xdg_toplevel_icon_manager_v1) {
+        xdg_toplevel_icon_manager_v1_destroy(data->xdg_toplevel_icon_manager_v1);
+        data->xdg_toplevel_icon_manager_v1 = NULL;
     }
 
     if (data->kde_output_order) {
